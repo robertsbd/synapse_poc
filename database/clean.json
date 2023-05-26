@@ -1,0 +1,26 @@
+{
+	"name": "clean",
+	"properties": {
+		"Name": "clean",
+		"EntityType": "DATABASE",
+		"Origin": {
+			"Type": "SPARK"
+		},
+		"Properties": {
+			"IsSyMSCDMDatabase": true
+		},
+		"Description": "This is the cleaned database",
+		"Source": {
+			"Provider": "ADLS",
+			"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/clean_lake_database",
+			"Properties": {
+				"FormatType": "parquet",
+				"LinkedServiceName": "syn-north-europe-WorkspaceDefaultStorage"
+			}
+		},
+		"PublishStatus": "PUBLISHED",
+		"ObjectVersion": 2,
+		"ObjectId": "9fe286e6-b49b-43a6-93de-109cf9a4d143"
+	},
+	"type": "DATABASE"
+}

@@ -1,0 +1,68 @@
+{
+	"name": "vendorproduct",
+	"properties": {
+		"Name": "vendorproduct",
+		"EntityType": "TABLE",
+		"TableType": "EXTERNAL",
+		"Namespace": {
+			"SchemaName": null,
+			"DatabaseName": "clean",
+			"DatabaseId": null
+		},
+		"StorageDescriptor": {
+			"Distribution": null,
+			"Columns": [],
+			"ColumnSetEntityName": "6813bbb2-fab9-4ed6-8a08-38cbfa523410",
+			"Format": {
+				"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+				"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+				"FormatType": "delta",
+				"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+				"Properties": {
+					"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/vendorproduct",
+					"serialization.format": "1"
+				}
+			},
+			"Source": {
+				"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/vendorproduct",
+				"Properties": {
+					"LocationSetToDatabaseDefault": false
+				}
+			},
+			"Properties": {
+				"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+			},
+			"Compressed": false,
+			"SerDeInfo": null,
+			"IsStoredAsSubdirectories": false
+		},
+		"Owner": "trusted-service-user",
+		"CreateTime": 1685053931,
+		"LastAccessTime": 0,
+		"Retention": 0,
+		"Temporary": false,
+		"IsRewriteEnabled": false,
+		"ViewOriginalText": null,
+		"ViewExpandedText": null,
+		"Origin": {
+			"Type": "SPARK"
+		},
+		"OriginObjectId": null,
+		"IsSharedEntity": false,
+		"PublishStatus": "PUBLISHED",
+		"Properties": {
+			"TotalSize": "12520",
+			"EXTERNAL": "TRUE",
+			"NumFiles": "4",
+			"Transient_lastDdlTime": "1685053934",
+			"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+			"spark.sql.partitionProvider": "filesystem",
+			"spark.sql.sources.provider": "delta",
+			"spark.sql.create.version": "3.3.1.5.2-92046214",
+			"PrimaryKeys": ""
+		},
+		"ObjectVersion": 3,
+		"ObjectId": "8c864752-2cb8-4954-85ba-0eaeefef223e"
+	},
+	"type": "TABLE"
+}
