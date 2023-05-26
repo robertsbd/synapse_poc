@@ -18,104 +18,11 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7e195543-f7a5-4eb3-8dea-05988d25c8f0"
+				"spark.autotune.trackingId": "f3b72c88-eeec-4687-99ea-5d25c8ce6d52"
 			}
 		},
 		"metadata": {
 			"saveOutput": true,
-			"synapse_widget": {
-				"version": "0.1",
-				"state": {
-					"36d7d1b1-b20c-4ae4-adb4-c4d017583d0e": {
-						"type": "Synapse.DataFrame",
-						"sync_state": {
-							"table": {
-								"rows": [
-									{
-										"0": "4",
-										"1": "Accessories"
-									},
-									{
-										"0": "1",
-										"1": "Bikes"
-									},
-									{
-										"0": "3",
-										"1": "Clothing"
-									},
-									{
-										"0": "2",
-										"1": "Components"
-									},
-									{
-										"0": "4",
-										"1": "Accessories"
-									},
-									{
-										"0": "1",
-										"1": "Bikes"
-									},
-									{
-										"0": "3",
-										"1": "Clothing"
-									},
-									{
-										"0": "2",
-										"1": "Components"
-									},
-									{
-										"0": "4",
-										"1": "Accessories"
-									},
-									{
-										"0": "1",
-										"1": "Bikes"
-									},
-									{
-										"0": "3",
-										"1": "Clothing"
-									},
-									{
-										"0": "2",
-										"1": "Components"
-									}
-								],
-								"schema": [
-									{
-										"key": "0",
-										"name": "CategoryID",
-										"type": "string"
-									},
-									{
-										"key": "1",
-										"name": "CategoryName",
-										"type": "string"
-									}
-								],
-								"truncated": false
-							},
-							"isSummary": false,
-							"language": "scala"
-						},
-						"persist_state": {
-							"view": {
-								"type": "details",
-								"chartOptions": {
-									"chartType": "bar",
-									"aggregationType": "count",
-									"categoryFieldKeys": [
-										"0"
-									],
-									"seriesFieldKeys": [
-										"0"
-									],
-									"isStacked": false
-								}
-							}
-						}
-					}
-				}
-			},
 			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
@@ -131,14 +38,13 @@
 				"endpoint": "https://syn-north-europe.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/smallpool",
 				"auth": {
 					"type": "AAD",
-					"authResource": "https://dev.azuresynapse.net",
-					"authHeader": null
+					"authResource": "https://dev.azuresynapse.net"
 				},
 				"sparkVersion": "3.3",
 				"nodeCount": 10,
 				"cores": 4,
 				"memory": 28,
-				"extraHeader": null
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -218,14 +124,9 @@
 					"\r\n",
 					"# File paths\r\n",
 					"INGEST_DL = 'abfss://ingestfiles@synapseteststoragebr.dfs.core.windows.net/'\r\n",
-					"RAW_DL = 'abfss://rawzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
+					"#RAW_DL = 'abfss://rawzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
 					"CLEAN_DL = 'abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
 					"MODELLED_DL = 'abfss://modelzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
-					"\r\n",
-					"# landed_to_raw() will read from a csv file from landed storage and write to the raw zone\r\n",
-					"def raw_to_cleaned(landedRelativePath, rawRelativePath):\r\n",
-					"    df = spark.read.load(INGEST_DL + landedRelativePath, format='csv', header=True)\r\n",
-					"    df.write.format(\"delta\").mode('append').save(RAW_DL + rawRelativePath) # note the mode append\r\n",
 					"\r\n",
 					"# Example of function we would put in place for cleaning data, this could be made more complete\r\n",
 					"def clean_dataframe(df_dirty):\r\n",
@@ -233,8 +134,10 @@
 					"\r\n",
 					"# raw_to_clean() will read a delta file from raw and write to a delta file \r\n",
 					"# in overwrite mode to cleaned, applying cleaning function\r\n",
+					"# here we should verify the schema and also DQ our data, quaranteening any rows that fail, although it is \r\n",
+					"\r\n",
 					"def raw_to_clean(relativePathRaw, tableName, lakeDatabase):\r\n",
-					"    df_raw = spark.read.format(\"delta\").load(RAW_DL + relativePathRaw)\r\n",
+					"    df_raw = spark.read.load(INGEST_DL + landedRelativePath, format='csv', header=True)\r\n",
 					"    df_cleaned = clean_dataframe(df_raw)\r\n",
 					"    df_cleaned.write.option(\"path\", CLEAN_DL + tableName).format('delta').mode('overwrite').saveAsTable(lakeDatabase + '.' + tableName) # note the mode overwrite, note that we are saving as a table to add it to the lake database"
 				],
@@ -250,83 +153,7 @@
 					}
 				},
 				"source": [
-					"# Stage 1: Read CSV files from blob storage -> raw zone\r\n",
-					"- The raw layer will hold all data that has come from the source systems, read and store everything is the important thing here\r\n",
-					"- Files stored as delta"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# read all csv files and write as delta files to the raw layer\r\n",
-					"\r\n",
-					"landed_to_raw('customers.csv', 'customers') \r\n",
-					"landed_to_raw('employees.csv', 'employees') \r\n",
-					"landed_to_raw('productcategories.csv', 'productcategories') \r\n",
-					"landed_to_raw('orders.csv', 'orders')\r\n",
-					"landed_to_raw('products.csv', 'products') \r\n",
-					"landed_to_raw('productsubcategories.csv', 'productsubcategories') \r\n",
-					"landed_to_raw('vendorproduct.csv', 'vendorproduct') \r\n",
-					"landed_to_raw('vendors.csv', 'vendors')"
-				],
-				"execution_count": 3
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"\r\n",
-					"## Oh no we have duplicates in our data!"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"df_prodcat_from_raw = spark.read.format(\"delta\").load(RAW_DL + 'productcategories')\r\n",
-					"display(df_prodcat_from_raw)"
-				],
-				"execution_count": 7
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Stage 2: raw zone -> cleaned zone \r\n",
+					"# Stage 1: raw zone -> cleaned zone \r\n",
 					"- Clean it and save it as delta to the cleansed layer, create catalogue tables in our cleansed lake database\r\n",
 					"- Here we provide data that represents the source system tables, cleaned as we require, with data quality checks\r\n",
 					"- We also add a catalogue table in our lake database if it doesn't exist, this makes it easy for analysts and others to make use of these tables\r\n",
@@ -405,7 +232,7 @@
 					}
 				},
 				"source": [
-					"### Stage 3: cleaned zone -> model zone\r\n",
+					"### Stage 2: cleaned zone -> model zone\r\n",
 					"- Here we transform the data to make it useful for customers and reporting\r\n",
 					"- We are creating these as views in a sql database to allow Power BI to query the data"
 				]
