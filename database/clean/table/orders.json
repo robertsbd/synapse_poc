@@ -1,0 +1,68 @@
+{
+	"name": "orders",
+	"properties": {
+		"Name": "orders",
+		"EntityType": "TABLE",
+		"TableType": "EXTERNAL",
+		"Namespace": {
+			"SchemaName": null,
+			"DatabaseName": "clean",
+			"DatabaseId": null
+		},
+		"StorageDescriptor": {
+			"Distribution": null,
+			"Columns": [],
+			"ColumnSetEntityName": "2f7b030a-6dc5-4d5a-8a94-b801887a856e",
+			"Format": {
+				"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+				"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+				"FormatType": "delta",
+				"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+				"Properties": {
+					"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/orders",
+					"serialization.format": "1"
+				}
+			},
+			"Source": {
+				"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/orders",
+				"Properties": {
+					"LocationSetToDatabaseDefault": false
+				}
+			},
+			"Properties": {
+				"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+			},
+			"Compressed": false,
+			"SerDeInfo": null,
+			"IsStoredAsSubdirectories": false
+		},
+		"Owner": "trusted-service-user",
+		"CreateTime": 1685053942,
+		"LastAccessTime": 0,
+		"Retention": 0,
+		"Temporary": false,
+		"IsRewriteEnabled": false,
+		"ViewOriginalText": null,
+		"ViewExpandedText": null,
+		"Origin": {
+			"Type": "SPARK"
+		},
+		"OriginObjectId": null,
+		"IsSharedEntity": false,
+		"PublishStatus": "PUBLISHED",
+		"Properties": {
+			"TotalSize": "2410014",
+			"EXTERNAL": "TRUE",
+			"NumFiles": "6",
+			"Transient_lastDdlTime": "1685053946",
+			"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+			"spark.sql.partitionProvider": "filesystem",
+			"spark.sql.sources.provider": "delta",
+			"spark.sql.create.version": "3.3.1.5.2-92046214",
+			"PrimaryKeys": ""
+		},
+		"ObjectVersion": 2,
+		"ObjectId": "b6cfa093-1dbf-4a18-bd4d-55e2ccc447cf"
+	},
+	"type": "TABLE"
+}

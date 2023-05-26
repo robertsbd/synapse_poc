@@ -1,0 +1,17 @@
+{
+	"name": "Set up modelled database",
+	"properties": {
+		"content": {
+			"query": "USE modelled;\nGO;\n\nCREATE OR ALTER VIEW CUSTOMERS AS\nSELECT\n    CustomerID AS CUSTOMER_ID,\n    FirstName AS FIRSTNAME,\n    LastName AS LASTNAME,\n    FullName AS FULL_NAME\nFROM clean.dbo.customers;\nGO;\n\nCREATE OR ALTER VIEW EMPLOYEES AS SELECT\n    EmployeeID AS EMPLOYEE_ID,\n    ManagerID AS MANAGER_ID,\n    FirstName AS FIRST_NAME,\n    LastName AS LAST_NAME,\n    FullName AS FULL_NAME,\n    JobTitle AS JOB_TITLE,\n    OrganizationLevel AS ORGANISATION_LEVEL,\n    Territory AS TERRITORY,\n    Country AS COUNTRY,\n    [Group] AS [GROUP] \nFROM clean.dbo.employees\nGO;\n\nCREATE OR ALTER VIEW ORDERS AS SELECT \n    SalesOrderID AS SALES_ORDER_ID,\n    OrderDate AS ORDER_DATE,\n    DueDate AS DUE_DATE,\n    ShipDate AS SHIP_DATE,\n    EmployeeID AS EMPLOYEE_ID,\n    OrderQty AS ORDER_QTY,\n    CAST(UnitPrice AS NUMERIC) AS UNIT_PRICE,\n    UnitPriceDiscount AS UNIT_PRICE_DISCOUNT,\n    LineTotal AS LINE_TOTAL,\n    CustomerID AS CUSTOMER_ID,\n    SubTotal AS SUB_TOTAL,\n    TaxAmt AS TAX_AMOUNT,\n    Freight AS FREIGHT,\n    TotalDue AS TOTAL_DUE,\n    ProductID AS PRODUCT_ID\nFROM clean.dbo.orders;\nGO;\n\nCREATE OR ALTER VIEW PRODUCT_CATEGORIES AS \nSELECT\n    psc.SubCategoryID AS PRODUCT_SUBCATEGORY_ID, \n    psc.SubCategoryName AS SUBCATEGORY_NAME,\n    pc.CategoryName AS CATEGORY_NAME\nFROM \n    clean.dbo.productsubcategories as psc LEFT JOIN clean.dbo.productcategories AS pc \n    ON psc.CategoryID = pc.CategoryID;\nGO;\n\nCREATE OR ALTER VIEW PRODUCTS AS\nSELECT\n    p.ProductID AS PRODUCT_ID,\n    p.SubCategoryID AS SUBCATEGORY_ID,\n    vp.VendorID AS VENDOR_ID,\n    p.ProductNumber AS PRODUCT_NUMBER,\n    p.ProductName AS PRODUCT_NAME,\n    p.ModelName AS MODEL_NAME,\n    p.StandardCost AS STANDARD_COST,\n    p.ListPrice AS LIST_PRICE\nFROM \n    clean.dbo.products AS p LEFT JOIN clean.dbo.vendorproduct AS vp \n    ON p.ProductID = vp.ProductID;\nGO;\n\nCREATE OR ALTER VIEW VENDORS AS \nSELECT\n    VendorID AS VENDOR_ID,\n    VendorName AS VENDOR_NAME,\n    AccountNumber AS ACCOUNT_NUMBER,\n    CreditRating AS CREDIT_RATING,\n    ActiveFlag AS ACTIVE_FLAG\nFROM clean.dbo.vendors;\nGO;",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "modelled",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

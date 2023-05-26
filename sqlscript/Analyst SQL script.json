@@ -1,0 +1,17 @@
+{
+	"name": "Analyst SQL script",
+	"properties": {
+		"content": {
+			"query": "USE modelled;\n\nSELECT \n    PRODUCT_NAME,\n    SUM(UNIT_PRICE) AS TOTAL_REVENUE \nFROM \n    ORDERS AS o \n    LEFT JOIN PRODUCTS as p ON o.PRODUCT_ID = p.PRODUCT_ID \nWHERE UNIT_PRICE < 5\nGROUP BY PRODUCT_NAME;",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "master",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

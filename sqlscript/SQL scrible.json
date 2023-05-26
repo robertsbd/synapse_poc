@@ -1,0 +1,17 @@
+{
+	"name": "SQL scrible",
+	"properties": {
+		"content": {
+			"query": "USE clean;\nGO;\n\nSELECT * FROM customers;",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "clean",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
