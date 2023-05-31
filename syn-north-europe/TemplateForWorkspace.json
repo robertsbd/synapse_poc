@@ -1,0 +1,1741 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"type": "string",
+			"metadata": "Workspace name",
+			"defaultValue": "syn-north-europe"
+		},
+		"AzureDataLakeStorage1_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorage1'"
+		},
+		"syn-north-europe-WorkspaceDefaultSqlServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'syn-north-europe-WorkspaceDefaultSqlServer'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:syn-north-europe.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"AzureDataLakeStorage1_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://synapseteststoragebr.dfs.core.windows.net/"
+		},
+		"syn-north-europe-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://synapseteststoragebr.dfs.core.windows.net"
+		},
+		"Adventureworks_git_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://raw.githubusercontent.com/sfrechette/adventureworks-neo4j/master/data/"
+		}
+	},
+	"variables": {
+		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/AzureDataLakeStorage1')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('AzureDataLakeStorage1_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('AzureDataLakeStorage1_accountKey')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/syn-north-europe-WorkspaceDefaultSqlServer')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"parameters": {
+					"DBName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('syn-north-europe-WorkspaceDefaultSqlServer_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/syn-north-europe-WorkspaceDefaultStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('syn-north-europe-WorkspaceDefaultStorage_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.Synapse/workspaces/credentials",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Analyst SQL script')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "USE modelled;\n\nSELECT \n    PRODUCT_NAME,\n    SUM(UNIT_PRICE) AS TOTAL_REVENUE \nFROM \n    ORDERS AS o \n    LEFT JOIN PRODUCTS as p ON o.PRODUCT_ID = p.PRODUCT_ID \nWHERE UNIT_PRICE < 5\nGROUP BY PRODUCT_NAME;",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "master",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL scrible')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "USE clean;\nGO;\n\nSELECT * FROM customers;",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "clean",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Create views in modelled database')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "USE modelled;\nGO;\n\nCREATE OR ALTER VIEW CUSTOMERS AS\nSELECT\n    CustomerID AS CUSTOMER_ID,\n    FirstName AS FIRSTNAME,\n    LastName AS LASTNAME,\n    FullName AS FULL_NAME\nFROM clean.dbo.customers;\nGO;\n\nCREATE OR ALTER VIEW EMPLOYEES AS SELECT\n    EmployeeID AS EMPLOYEE_ID,\n    ManagerID AS MANAGER_ID,\n    FirstName AS FIRST_NAME,\n    LastName AS LAST_NAME,\n    FullName AS FULL_NAME,\n    JobTitle AS JOB_TITLE,\n    OrganizationLevel AS ORGANISATION_LEVEL,\n    Territory AS TERRITORY,\n    Country AS COUNTRY,\n    [Group] AS [GROUP] \nFROM clean.dbo.employees\nGO;\n\nCREATE OR ALTER VIEW ORDERS AS SELECT \n    SalesOrderID AS SALES_ORDER_ID,\n    OrderDate AS ORDER_DATE,\n    DueDate AS DUE_DATE,\n    ShipDate AS SHIP_DATE,\n    EmployeeID AS EMPLOYEE_ID,\n    OrderQty AS ORDER_QTY,\n    CAST(UnitPrice AS NUMERIC) AS UNIT_PRICE,\n    UnitPriceDiscount AS UNIT_PRICE_DISCOUNT,\n    LineTotal AS LINE_TOTAL,\n    CustomerID AS CUSTOMER_ID,\n    SubTotal AS SUB_TOTAL,\n    TaxAmt AS TAX_AMOUNT,\n    Freight AS FREIGHT,\n    TotalDue AS TOTAL_DUE,\n    ProductID AS PRODUCT_ID\nFROM clean.dbo.orders;\nGO;\n\nCREATE OR ALTER VIEW PRODUCT_CATEGORIES AS \nSELECT\n    psc.SubCategoryID AS PRODUCT_SUBCATEGORY_ID, \n    psc.SubCategoryName AS SUBCATEGORY_NAME,\n    pc.CategoryName AS CATEGORY_NAME\nFROM \n    clean.dbo.productsubcategories as psc LEFT JOIN clean.dbo.productcategories AS pc \n    ON psc.CategoryID = pc.CategoryID;\nGO;\n\nCREATE OR ALTER VIEW PRODUCTS AS\nSELECT\n    p.ProductID AS PRODUCT_ID,\n    p.SubCategoryID AS SUBCATEGORY_ID,\n    vp.VendorID AS VENDOR_ID,\n    p.ProductNumber AS PRODUCT_NUMBER,\n    p.ProductName AS PRODUCT_NAME,\n    p.ModelName AS MODEL_NAME,\n    p.StandardCost AS STANDARD_COST,\n    p.ListPrice AS LIST_PRICE\nFROM \n    clean.dbo.products AS p LEFT JOIN clean.dbo.vendorproduct AS vp \n    ON p.ProductID = vp.ProductID;\nGO;\n\nCREATE OR ALTER VIEW VENDORS AS \nSELECT\n    VendorID AS VENDOR_ID,\n    VendorName AS VENDOR_NAME,\n    AccountNumber AS ACCOUNT_NUMBER,\n    CreditRating AS CREDIT_RATING,\n    ActiveFlag AS ACTIVE_FLAG\nFROM clean.dbo.vendors;\nGO;",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "modelled",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Analyst notebook')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "smallpool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"runAsWorkspaceSystemIdentity": false,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "efdb1989-a8f5-4529-ae04-23ed9c54597e"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/2c01d69b-5ddb-449b-8aab-e0a472eeae7f/resourceGroups/synapse-test/providers/Microsoft.Synapse/workspaces/syn-north-europe/bigDataPools/smallpool",
+						"name": "smallpool",
+						"type": "Spark",
+						"endpoint": "https://syn-north-europe.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/smallpool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 10,
+						"cores": 4,
+						"memory": 28
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# An example of ad hoc analyst work"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"from pyspark.sql.functions import col, when"
+						],
+						"outputs": [],
+						"execution_count": 14
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"df = spark.sql(\"SELECT * FROM clean.orders\")"
+						],
+						"outputs": [],
+						"execution_count": 15
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"df.dtypes"
+						],
+						"outputs": [],
+						"execution_count": 16
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"df_select = df.select('SalesOrderID', 'DueDate', 'ShipDate')\r\n",
+							"df_select.dtypes"
+						],
+						"outputs": [],
+						"execution_count": 17
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"collapsed": false
+						},
+						"source": [
+							"is_late = when(col('ShipDate') > col(\"DueDate\"), 1).otherwise(0)\r\n",
+							"\r\n",
+							"df_late = df_select.withColumn('Late', is_late)\r\n",
+							"\r\n",
+							"display(df_late)"
+						],
+						"outputs": [],
+						"execution_count": 19
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							""
+						],
+						"outputs": [],
+						"execution_count": null
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Backfill pipeline')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "smallpool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"runAsWorkspaceSystemIdentity": false,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "9179c721-72a9-4d93-a724-8a3872b07adb"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/2c01d69b-5ddb-449b-8aab-e0a472eeae7f/resourceGroups/synapse-test/providers/Microsoft.Synapse/workspaces/syn-north-europe/bigDataPools/smallpool",
+						"name": "smallpool",
+						"type": "Spark",
+						"endpoint": "https://syn-north-europe.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/smallpool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 10,
+						"cores": 4,
+						"memory": 28,
+						"automaticScaleJobs": false
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# An example pipeline based around delta files using Python and SQL\r\n",
+							"- This pipeline would be triggered as new data is added to the blob storage, or timed to run on a regular basis, we could even stream data live through it. The entire notebook would be run at once meaning we wouldn't be orcestrating multiple components together.\r\n",
+							"- Read CSV files that have been added to blob storage by an external process and write these as delta files to our raw zone\r\n",
+							"- Read the delta files in our raw zone, conduct some data cleansing and write to our cleansed zone as well as create tables associated with these files in our cleansed database\r\n",
+							"- Read the delta files in our cleaned zone, model them by applying business logic and write these into our model zone as well as creating associated tables in our model database\r\n",
+							"\r\n",
+							"## Benefits of using delta files\r\n",
+							"- Simple: a single file structure in which new data is added, rather than having to combine together multiple files to create the current version of a file\r\n",
+							"- Compressed and fast: they are instantiated at the base level as parquet files\r\n",
+							"- Can travel back in time to previous versions of the delta file, for instance if problematic data was added and we want to go back to an older version, or we want to see how the data has changed through time\r\n",
+							"- ACID transactions which means if we write to the file and there is a failure during the write operation we will not partial data added, transactions are all or nothing"
+						]
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# Helpers\r\n",
+							"Define our functions and constants.\r\n",
+							"We would aim to build up a code base of reusable functions which would be held din helper "
+						]
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							""
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"collapsed": false
+						},
+						"source": [
+							"# This notebook contains setups and functions\r\n",
+							"\r\n",
+							"# Imports\r\n",
+							"from pyspark.sql.functions import *\r\n",
+							"\r\n",
+							"# constants\r\n",
+							"\r\n",
+							"# File paths\r\n",
+							"RAW_DL = 'abfss://rawzone@synapseteststoragebr.dfs.core.windows.net/files/'\r\n",
+							"CLEAN_DL = 'abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
+							"MODELLED_DL = 'abfss://modelzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
+							"\r\n",
+							"SOURCE_SYSTEM = \"adventure_works\" # source system of the data being ingested <- this should become a parameter as we generalise this\r\n",
+							"\r\n",
+							"# Example of function we would put in place for cleaning data, this could be made more complete\r\n",
+							"def clean_dataframe(df_dirty):\r\n",
+							"    col_names = df_dirty.drop('source', 'pipelineName', 'pipelineTriggerTime').columns # names of coumns that we will use to determine unique rows\r\n",
+							"    return df_dirty.dropDuplicates(col_names) # get rid of any duplicates\r\n",
+							"\r\n",
+							"# raw_to_clean() will read a delta file from raw and write to a delta file \r\n",
+							"# in overwrite mode to cleaned, applying cleaning function\r\n",
+							"# here we should verify the schema and also DQ our data, quaranteening any rows that fail, although it is \r\n",
+							"\r\n",
+							"def raw_to_clean(rawRelativePath, tableName, lakeDatabase):\r\n",
+							"    df_raw = spark.read.load(RAW_DL + rawRelativePath + '/*/*/*/*', format='parquet', header=True)\r\n",
+							"    df_cleaned = clean_dataframe(df_raw)\r\n",
+							"    df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + tableName).format('delta').mode('overwrite').saveAsTable(lakeDatabase + '.' + tableName) # note the mode overwrite, note that we are saving as a table to add it to the lake database"
+						],
+						"outputs": [],
+						"execution_count": 23
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# Stage 1: raw zone -> cleaned zone \r\n",
+							"- Clean it and save it as delta to the cleansed layer, create catalogue tables in our cleansed lake database\r\n",
+							"- Here we provide data that represents the source system tables, cleaned as we require, with data quality checks\r\n",
+							"- We also add a catalogue table in our lake database if it doesn't exist, this makes it easy for analysts and others to make use of these tables\r\n",
+							"- If the catalogue table already exists then simply by updating delta file itself the data that appears in the table will also be updated, the table is really just a pointer to the file, but it exists in an organised database like structure"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"collapsed": false
+						},
+						"source": [
+							"# create silver delta files and catelogue table\r\n",
+							"raw_to_clean('productcategories', 'productcategories', 'clean')\r\n",
+							"raw_to_clean('employees', 'employees', 'clean')\r\n",
+							"raw_to_clean('customers', 'customers', 'clean')\r\n",
+							"raw_to_clean('products', 'products', 'clean')\r\n",
+							"raw_to_clean('productsubcategories', 'productsubcategories', 'clean')\r\n",
+							"raw_to_clean('vendorproduct', 'vendorproduct', 'clean')\r\n",
+							"raw_to_clean('vendors', 'vendors', 'clean')\r\n",
+							"\r\n",
+							"# For the table orders we need to change text strings to dates to get rid of US formatting. This is schema enforcement and this is where we would want to start specifying this as metadata\r\n",
+							"df_orders = spark.read.load(RAW_DL + 'orders' + '/*/*/*/*', format='parquet', header=True)\r\n",
+							"df_orders_out = df_orders.select(\r\n",
+							"    df_orders.SalesOrderID,\r\n",
+							"    df_orders.SalesOrderDetailID,\r\n",
+							"    to_date(df_orders.OrderDate, \"M/d/yyyy\").alias('OrderDate'),\r\n",
+							"    to_date(df_orders.DueDate, \"M/d/yyyy\").alias('DueDate'),  \r\n",
+							"    to_date(df_orders.ShipDate, \"M/d/yyyy\").alias('ShipDate'),\r\n",
+							"    df_orders.EmployeeID,\r\n",
+							"    df_orders.CustomerID,\r\n",
+							"    df_orders.SubTotal,\r\n",
+							"    df_orders.TaxAmt,\r\n",
+							"    df_orders.Freight,\r\n",
+							"    df_orders.TotalDue,\r\n",
+							"    df_orders.ProductID,\r\n",
+							"    df_orders.OrderQty,    \r\n",
+							"    df_orders.UnitPrice,            \r\n",
+							"    df_orders.UnitPriceDiscount,\r\n",
+							"    df_orders.LineTotal)\r\n",
+							"\r\n",
+							"df_cleaned = clean_dataframe(df_orders_out)\r\n",
+							"df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + 'orders').format('delta').mode('overwrite').saveAsTable('clean' + '.' + 'orders')"
+						],
+						"outputs": [],
+						"execution_count": 36
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							""
+						]
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"### Stage 2: cleaned zone -> model zone\r\n",
+							"- Here we transform the data to make it useful for customers and reporting\r\n",
+							"- We are creating these as views in a sql database to allow Power BI to query the data"
+						]
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# Business model of ingested data in the cleaned zone\r\n",
+							"\r\n",
+							"![image-alt-text](https://raw.githubusercontent.com/sfrechette/adventureworks-neo4j/master/graphmodel_adventureworks.png)\r\n",
+							"\r\n",
+							"We shall create a simpler reporting model by creating a SQL database which can then be queried"
+						]
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							""
+						]
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/R example')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "smallpool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"runAsWorkspaceSystemIdentity": false,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "a988b564-16dd-4388-a169-d73546123471"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"synapse_widget": {
+						"version": "0.1"
+					},
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "r"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/2c01d69b-5ddb-449b-8aab-e0a472eeae7f/resourceGroups/synapse-test/providers/Microsoft.Synapse/workspaces/syn-north-europe/bigDataPools/smallpool",
+						"name": "smallpool",
+						"type": "Spark",
+						"endpoint": "https://syn-north-europe.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/smallpool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net",
+							"authHeader": null
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 10,
+						"cores": 4,
+						"memory": 28,
+						"extraHeader": null
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# R notebook  \r\n",
+							"This will cater toward an audience of data scientists and statisticians. \r\n",
+							"What is important here is that this audience can easily connect to curated, central data sets. \r\n",
+							"They will also be able to build their own data sets to work from.\r\n",
+							""
+						]
+					},
+					{
+						"cell_type": "code",
+						"source": [
+							"# create a vector for matrix elements\r\n",
+							"vector1=c(1,2,3,4,5,6,7,8,9,10,11,12)\r\n",
+							"  \r\n",
+							"# Create A matrix with 2 rows and 6 columns\r\n",
+							"matrix1 <- matrix(vector1, nrow=2,ncol=6) \r\n",
+							"  \r\n",
+							"# multiplication vector\r\n",
+							"mul_vec=c(1,2,3,4)\r\n",
+							"  \r\n",
+							"# print multiplication result\r\n",
+							"print(matrix1*mul_vec)"
+						],
+						"outputs": [],
+						"execution_count": 1
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": true
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"df_sql <- collect(sql(\"SELECT DOUBLE(TaxAmt), DOUBLE(Freight) FROM clean.orders\"))"
+						],
+						"outputs": [],
+						"execution_count": 65
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"corr(df_sql, TaxAmt, Freight)"
+						],
+						"outputs": [],
+						"execution_count": 78
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"x1<-rnorm(20)\r\n",
+							"x2<-rnorm(20)\r\n",
+							"x3<-rnorm(20)\r\n",
+							"df1<-data.frame(x1,x2,x3)\r\n",
+							"mean(df1$x1)"
+						],
+						"outputs": [],
+						"execution_count": 51
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							""
+						],
+						"outputs": []
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/clean')]",
+			"type": "Microsoft.Synapse/workspaces/databases",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"Ddls": [
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "clean",
+							"EntityType": "DATABASE",
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"Properties": {
+								"IsSyMSCDMDatabase": true
+							},
+							"Description": "This is the cleaned database",
+							"Source": {
+								"Provider": "ADLS",
+								"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/clean_lake_database",
+								"Properties": {
+									"FormatType": "parquet",
+									"LinkedServiceName": "syn-north-europe-WorkspaceDefaultStorage"
+								}
+							},
+							"PublishStatus": "PUBLISHED",
+							"ObjectVersion": 2,
+							"ObjectId": "9fe286e6-b49b-43a6-93de-109cf9a4d143"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					},
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "customers",
+							"EntityType": "TABLE",
+							"TableType": "EXTERNAL",
+							"Namespace": {
+								"SchemaName": null,
+								"DatabaseName": "clean",
+								"DatabaseId": null
+							},
+							"StorageDescriptor": {
+								"Distribution": null,
+								"Columns": [],
+								"ColumnSetEntityName": "e55b3757-88a8-4335-9dfb-d1675386fa76",
+								"Format": {
+									"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+									"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+									"FormatType": "delta",
+									"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+									"Properties": {
+										"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/customers",
+										"serialization.format": "1"
+									}
+								},
+								"Source": {
+									"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/customers",
+									"Properties": {
+										"LocationSetToDatabaseDefault": false
+									}
+								},
+								"Properties": {
+									"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+								},
+								"Compressed": false,
+								"SerDeInfo": null,
+								"IsStoredAsSubdirectories": false
+							},
+							"Owner": "trusted-service-user",
+							"CreateTime": 1685053918,
+							"LastAccessTime": 0,
+							"Retention": 0,
+							"Temporary": false,
+							"IsRewriteEnabled": false,
+							"ViewOriginalText": null,
+							"ViewExpandedText": null,
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"OriginObjectId": null,
+							"IsSharedEntity": false,
+							"PublishStatus": "PUBLISHED",
+							"Properties": {
+								"TotalSize": "104110",
+								"EXTERNAL": "TRUE",
+								"NumFiles": "5",
+								"Transient_lastDdlTime": "1685053921",
+								"PrimaryKeys": "",
+								"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+								"spark.sql.partitionProvider": "filesystem",
+								"spark.sql.sources.provider": "delta",
+								"spark.sql.create.version": "3.3.1.5.2-92046214"
+							},
+							"ObjectVersion": 4,
+							"ObjectId": "b9851fb8-24f8-428e-8a68-5c837c4b113f"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					},
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "employees",
+							"EntityType": "TABLE",
+							"TableType": "EXTERNAL",
+							"Namespace": {
+								"SchemaName": null,
+								"DatabaseName": "clean",
+								"DatabaseId": null
+							},
+							"StorageDescriptor": {
+								"Distribution": null,
+								"Columns": [],
+								"ColumnSetEntityName": "0878af55-74ff-4713-a4a2-387a8ffc07c4",
+								"Format": {
+									"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+									"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+									"FormatType": "delta",
+									"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+									"Properties": {
+										"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/employees",
+										"serialization.format": "1"
+									}
+								},
+								"Source": {
+									"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/employees",
+									"Properties": {
+										"LocationSetToDatabaseDefault": false
+									}
+								},
+								"Properties": {
+									"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+								},
+								"Compressed": false,
+								"SerDeInfo": null,
+								"IsStoredAsSubdirectories": false
+							},
+							"Owner": "trusted-service-user",
+							"CreateTime": 1685053914,
+							"LastAccessTime": 0,
+							"Retention": 0,
+							"Temporary": false,
+							"IsRewriteEnabled": false,
+							"ViewOriginalText": null,
+							"ViewExpandedText": null,
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"OriginObjectId": null,
+							"IsSharedEntity": false,
+							"PublishStatus": "PUBLISHED",
+							"Properties": {
+								"TotalSize": "17924",
+								"EXTERNAL": "TRUE",
+								"NumFiles": "4",
+								"Transient_lastDdlTime": "1685053917",
+								"PrimaryKeys": "",
+								"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+								"spark.sql.partitionProvider": "filesystem",
+								"spark.sql.sources.provider": "delta",
+								"spark.sql.create.version": "3.3.1.5.2-92046214"
+							},
+							"ObjectVersion": 3,
+							"ObjectId": "a03df729-b98d-442f-8763-7d7300a2712e"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					},
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "orders",
+							"EntityType": "TABLE",
+							"TableType": "EXTERNAL",
+							"Namespace": {
+								"SchemaName": null,
+								"DatabaseName": "clean",
+								"DatabaseId": null
+							},
+							"StorageDescriptor": {
+								"Distribution": null,
+								"Columns": [],
+								"ColumnSetEntityName": "2f7b030a-6dc5-4d5a-8a94-b801887a856e",
+								"Format": {
+									"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+									"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+									"FormatType": "delta",
+									"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+									"Properties": {
+										"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/orders",
+										"serialization.format": "1"
+									}
+								},
+								"Source": {
+									"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/orders",
+									"Properties": {
+										"LocationSetToDatabaseDefault": false
+									}
+								},
+								"Properties": {
+									"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+								},
+								"Compressed": false,
+								"SerDeInfo": null,
+								"IsStoredAsSubdirectories": false
+							},
+							"Owner": "trusted-service-user",
+							"CreateTime": 1685053942,
+							"LastAccessTime": 0,
+							"Retention": 0,
+							"Temporary": false,
+							"IsRewriteEnabled": false,
+							"ViewOriginalText": null,
+							"ViewExpandedText": null,
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"OriginObjectId": null,
+							"IsSharedEntity": false,
+							"PublishStatus": "PUBLISHED",
+							"Properties": {
+								"TotalSize": "2410014",
+								"EXTERNAL": "TRUE",
+								"NumFiles": "6",
+								"Transient_lastDdlTime": "1685053946",
+								"PrimaryKeys": "",
+								"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+								"spark.sql.partitionProvider": "filesystem",
+								"spark.sql.sources.provider": "delta",
+								"spark.sql.create.version": "3.3.1.5.2-92046214"
+							},
+							"ObjectVersion": 2,
+							"ObjectId": "b6cfa093-1dbf-4a18-bd4d-55e2ccc447cf"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					},
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "productcategories",
+							"EntityType": "TABLE",
+							"TableType": "EXTERNAL",
+							"Namespace": {
+								"SchemaName": null,
+								"DatabaseName": "clean",
+								"DatabaseId": null
+							},
+							"StorageDescriptor": {
+								"Distribution": null,
+								"Columns": [],
+								"ColumnSetEntityName": "ab0fe12c-d823-47bc-a243-152a78ba59d1",
+								"Format": {
+									"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+									"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+									"FormatType": "delta",
+									"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+									"Properties": {
+										"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/productcategories",
+										"serialization.format": "1"
+									}
+								},
+								"Source": {
+									"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/productcategories",
+									"Properties": {
+										"LocationSetToDatabaseDefault": false
+									}
+								},
+								"Properties": {
+									"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+								},
+								"Compressed": false,
+								"SerDeInfo": null,
+								"IsStoredAsSubdirectories": false
+							},
+							"Owner": "trusted-service-user",
+							"CreateTime": 1685053909,
+							"LastAccessTime": 0,
+							"Retention": 0,
+							"Temporary": false,
+							"IsRewriteEnabled": false,
+							"ViewOriginalText": null,
+							"ViewExpandedText": null,
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"OriginObjectId": null,
+							"IsSharedEntity": false,
+							"PublishStatus": "PUBLISHED",
+							"Properties": {
+								"TotalSize": "4740",
+								"EXTERNAL": "TRUE",
+								"NumFiles": "6",
+								"Transient_lastDdlTime": "1685053912",
+								"PrimaryKeys": "",
+								"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+								"spark.sql.partitionProvider": "filesystem",
+								"spark.sql.sources.provider": "delta",
+								"spark.sql.create.version": "3.3.1.5.2-92046214"
+							},
+							"ObjectVersion": 3,
+							"ObjectId": "0dce76cf-cb58-44bb-b572-3e3efe4af3a7"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					},
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "products",
+							"EntityType": "TABLE",
+							"TableType": "EXTERNAL",
+							"Namespace": {
+								"SchemaName": null,
+								"DatabaseName": "clean",
+								"DatabaseId": null
+							},
+							"StorageDescriptor": {
+								"Distribution": null,
+								"Columns": [],
+								"ColumnSetEntityName": "04fc7af5-e6cf-4a5f-8a29-4acf442aa1da",
+								"Format": {
+									"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+									"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+									"FormatType": "delta",
+									"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+									"Properties": {
+										"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/products",
+										"serialization.format": "1"
+									}
+								},
+								"Source": {
+									"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/products",
+									"Properties": {
+										"LocationSetToDatabaseDefault": false
+									}
+								},
+								"Properties": {
+									"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+								},
+								"Compressed": false,
+								"SerDeInfo": null,
+								"IsStoredAsSubdirectories": false
+							},
+							"Owner": "trusted-service-user",
+							"CreateTime": 1685053922,
+							"LastAccessTime": 0,
+							"Retention": 0,
+							"Temporary": false,
+							"IsRewriteEnabled": false,
+							"ViewOriginalText": null,
+							"ViewExpandedText": null,
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"OriginObjectId": null,
+							"IsSharedEntity": false,
+							"PublishStatus": "PUBLISHED",
+							"Properties": {
+								"TotalSize": "49188",
+								"EXTERNAL": "TRUE",
+								"NumFiles": "4",
+								"Transient_lastDdlTime": "1685053926",
+								"PrimaryKeys": "",
+								"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+								"spark.sql.partitionProvider": "filesystem",
+								"spark.sql.sources.provider": "delta",
+								"spark.sql.create.version": "3.3.1.5.2-92046214"
+							},
+							"ObjectVersion": 3,
+							"ObjectId": "db186ee2-3f4c-4697-b110-c3130ffc0ff1"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					},
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "productsubcategories",
+							"EntityType": "TABLE",
+							"TableType": "EXTERNAL",
+							"Namespace": {
+								"SchemaName": null,
+								"DatabaseName": "clean",
+								"DatabaseId": null
+							},
+							"StorageDescriptor": {
+								"Distribution": null,
+								"Columns": [],
+								"ColumnSetEntityName": "1d48558d-9aa7-4a43-ae9a-8e3b02c0728b",
+								"Format": {
+									"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+									"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+									"FormatType": "delta",
+									"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+									"Properties": {
+										"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/productsubcategories",
+										"serialization.format": "1"
+									}
+								},
+								"Source": {
+									"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/productsubcategories",
+									"Properties": {
+										"LocationSetToDatabaseDefault": false
+									}
+								},
+								"Properties": {
+									"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+								},
+								"Compressed": false,
+								"SerDeInfo": null,
+								"IsStoredAsSubdirectories": false
+							},
+							"Owner": "trusted-service-user",
+							"CreateTime": 1685053927,
+							"LastAccessTime": 0,
+							"Retention": 0,
+							"Temporary": false,
+							"IsRewriteEnabled": false,
+							"ViewOriginalText": null,
+							"ViewExpandedText": null,
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"OriginObjectId": null,
+							"IsSharedEntity": false,
+							"PublishStatus": "PUBLISHED",
+							"Properties": {
+								"TotalSize": "6188",
+								"EXTERNAL": "TRUE",
+								"NumFiles": "4",
+								"Transient_lastDdlTime": "1685053930",
+								"PrimaryKeys": "",
+								"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+								"spark.sql.partitionProvider": "filesystem",
+								"spark.sql.sources.provider": "delta",
+								"spark.sql.create.version": "3.3.1.5.2-92046214"
+							},
+							"ObjectVersion": 3,
+							"ObjectId": "e4d32f7c-5938-413c-a61f-f092f1481678"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					},
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "vendorproduct",
+							"EntityType": "TABLE",
+							"TableType": "EXTERNAL",
+							"Namespace": {
+								"SchemaName": null,
+								"DatabaseName": "clean",
+								"DatabaseId": null
+							},
+							"StorageDescriptor": {
+								"Distribution": null,
+								"Columns": [],
+								"ColumnSetEntityName": "6813bbb2-fab9-4ed6-8a08-38cbfa523410",
+								"Format": {
+									"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+									"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+									"FormatType": "delta",
+									"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+									"Properties": {
+										"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/vendorproduct",
+										"serialization.format": "1"
+									}
+								},
+								"Source": {
+									"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/vendorproduct",
+									"Properties": {
+										"LocationSetToDatabaseDefault": false
+									}
+								},
+								"Properties": {
+									"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+								},
+								"Compressed": false,
+								"SerDeInfo": null,
+								"IsStoredAsSubdirectories": false
+							},
+							"Owner": "trusted-service-user",
+							"CreateTime": 1685053931,
+							"LastAccessTime": 0,
+							"Retention": 0,
+							"Temporary": false,
+							"IsRewriteEnabled": false,
+							"ViewOriginalText": null,
+							"ViewExpandedText": null,
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"OriginObjectId": null,
+							"IsSharedEntity": false,
+							"PublishStatus": "PUBLISHED",
+							"Properties": {
+								"TotalSize": "12520",
+								"EXTERNAL": "TRUE",
+								"NumFiles": "4",
+								"Transient_lastDdlTime": "1685053934",
+								"PrimaryKeys": "",
+								"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+								"spark.sql.partitionProvider": "filesystem",
+								"spark.sql.sources.provider": "delta",
+								"spark.sql.create.version": "3.3.1.5.2-92046214"
+							},
+							"ObjectVersion": 3,
+							"ObjectId": "8c864752-2cb8-4954-85ba-0eaeefef223e"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					},
+					{
+						"ActionType": "CREATE",
+						"OldEntity": null,
+						"NewEntity": {
+							"Name": "vendors",
+							"EntityType": "TABLE",
+							"TableType": "EXTERNAL",
+							"Namespace": {
+								"SchemaName": null,
+								"DatabaseName": "clean",
+								"DatabaseId": null
+							},
+							"StorageDescriptor": {
+								"Distribution": null,
+								"Columns": [],
+								"ColumnSetEntityName": "8a2b471b-ae15-42b1-92cb-c7fe965bae38",
+								"Format": {
+									"InputFormat": "org.apache.hadoop.mapred.SequenceFileInputFormat",
+									"OutputFormat": "org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat",
+									"FormatType": "delta",
+									"SerializeLib": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+									"Properties": {
+										"path": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/vendors",
+										"serialization.format": "1"
+									}
+								},
+								"Source": {
+									"Location": "abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/vendors",
+									"Properties": {
+										"LocationSetToDatabaseDefault": false
+									}
+								},
+								"Properties": {
+									"derivedModelAttributeInfo": "{\"attributeReferences\":{}}"
+								},
+								"Compressed": false,
+								"SerDeInfo": null,
+								"IsStoredAsSubdirectories": false
+							},
+							"Owner": "trusted-service-user",
+							"CreateTime": 1685053935,
+							"LastAccessTime": 0,
+							"Retention": 0,
+							"Temporary": false,
+							"IsRewriteEnabled": false,
+							"ViewOriginalText": null,
+							"ViewExpandedText": null,
+							"Origin": {
+								"Type": "SPARK"
+							},
+							"OriginObjectId": null,
+							"IsSharedEntity": false,
+							"PublishStatus": "PUBLISHED",
+							"Properties": {
+								"TotalSize": "18700",
+								"EXTERNAL": "TRUE",
+								"NumFiles": "4",
+								"Transient_lastDdlTime": "1685053938",
+								"PrimaryKeys": "",
+								"spark.sql.sources.schema": "{\"type\":\"struct\",\"fields\":[]}",
+								"spark.sql.partitionProvider": "filesystem",
+								"spark.sql.sources.provider": "delta",
+								"spark.sql.create.version": "3.3.1.5.2-92046214"
+							},
+							"ObjectVersion": 3,
+							"ObjectId": "00f1a3e2-6579-432e-aa71-9ae96824aada"
+						},
+						"Source": {
+							"Type": "SPARK"
+						}
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/smallpool')]",
+			"type": "Microsoft.Synapse/workspaces/bigDataPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"autoPause": {
+					"enabled": true,
+					"delayInMinutes": 15
+				},
+				"autoScale": {
+					"enabled": true,
+					"maxNodeCount": 10,
+					"minNodeCount": 3
+				},
+				"nodeCount": 10,
+				"nodeSize": "Small",
+				"nodeSizeFamily": "MemoryOptimized",
+				"sparkVersion": "3.3",
+				"isComputeIsolationEnabled": false,
+				"sessionLevelPackagesEnabled": false,
+				"annotations": []
+			},
+			"dependsOn": [],
+			"location": "northeurope"
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Ingest_adventure_works')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "read_file_names",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": false,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "file_list_for_ingest",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "iterate_over_fileNames",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "read_file_names",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('read_file_names').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data task",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"additionalColumns": [
+												{
+													"name": "source",
+													"value": "$$FILEPATH"
+												},
+												{
+													"name": "pipelineName",
+													"value": {
+														"value": "@pipeline().Pipeline",
+														"type": "Expression"
+													}
+												},
+												{
+													"name": "pipelineTriggerTime",
+													"value": {
+														"value": "@pipeline().TriggerTime",
+														"type": "Expression"
+													}
+												}
+											],
+											"storeSettings": {
+												"type": "HttpReadSettings",
+												"requestMethod": "GET"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "adventureworks_input_csv",
+											"type": "DatasetReference",
+											"parameters": {
+												"relativeUrl": "@item().Prop_0"
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "adventureworks_output_parquet",
+											"type": "DatasetReference",
+											"parameters": {
+												"fileName": {
+													"value": "@{\n    concat(\n        replace(item().Prop_0, '.csv', ''),\n        '/',\n        formatDateTime(pipeline().TriggerTime,'yyyy'),\n        '/',\n         formatDateTime(pipeline().TriggerTime,'MM'),\n        '/',\n        formatDateTime(pipeline().TriggerTime,'dd'),\n        '/',\n        formatDateTime(pipeline().TriggerTime,'HH_mm_ss'),\n        '/',    \n        replace(item().Prop_0, '.csv', ''),\n        '.parquet'\n    )\n}",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/file_list_for_ingest')]",
+				"[concat(variables('workspaceId'), '/datasets/adventureworks_input_csv')]",
+				"[concat(variables('workspaceId'), '/datasets/adventureworks_output_parquet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/file_list_for_ingest')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "fileNames.txt",
+						"fileSystem": "ingestfiles"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/AzureDataLakeStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Adventureworks_git')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "HttpServer",
+				"typeProperties": {
+					"url": "[parameters('Adventureworks_git_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/adventureworks_input_csv')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Adventureworks_git",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"relativeUrl": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "HttpServerLocation",
+						"relativeUrl": "@dataset().relativeUrl"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/Adventureworks_git')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/adventureworks_output_parquet')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"fileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().fileName",
+							"type": "Expression"
+						},
+						"folderPath": "delta",
+						"fileSystem": "rawzone"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/AzureDataLakeStorage1')]"
+			]
+		}
+	]
+}

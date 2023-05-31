@@ -1,0 +1,24 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"value": "syn-north-europe"
+		},
+		"AzureDataLakeStorage1_accountKey": {
+			"value": ""
+		},
+		"syn-north-europe-WorkspaceDefaultSqlServer_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:syn-north-europe.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"AzureDataLakeStorage1_properties_typeProperties_url": {
+			"value": "https://synapseteststoragebr.dfs.core.windows.net/"
+		},
+		"syn-north-europe-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"value": "https://synapseteststoragebr.dfs.core.windows.net"
+		},
+		"Adventureworks_git_properties_typeProperties_url": {
+			"value": "https://raw.githubusercontent.com/sfrechette/adventureworks-neo4j/master/data/"
+		}
+	}
+}
