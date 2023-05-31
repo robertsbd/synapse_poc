@@ -1,0 +1,144 @@
+{
+	"name": "Ingest_adventure_works",
+	"properties": {
+		"activities": [
+			{
+				"name": "read_file_names",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": false,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "file_list_for_ingest",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "iterate_over_fileNames",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "read_file_names",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('read_file_names').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copy data task",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"additionalColumns": [
+										{
+											"name": "source",
+											"value": "$$FILEPATH"
+										},
+										{
+											"name": "pipelineName",
+											"value": {
+												"value": "@pipeline().Pipeline",
+												"type": "Expression"
+											}
+										},
+										{
+											"name": "pipelineTriggerTime",
+											"value": {
+												"value": "@pipeline().TriggerTime",
+												"type": "Expression"
+											}
+										}
+									],
+									"storeSettings": {
+										"type": "HttpReadSettings",
+										"requestMethod": "GET"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "adventureworks_input_csv",
+									"type": "DatasetReference",
+									"parameters": {
+										"relativeUrl": "@item().Prop_0"
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "adventureworks_output_parquet",
+									"type": "DatasetReference",
+									"parameters": {
+										"fileName": {
+											"value": "@{\n    concat(\n        replace(item().Prop_0, '.csv', ''),\n        '/',\n        formatDateTime(pipeline().TriggerTime,'yyyy'),\n        '/',\n         formatDateTime(pipeline().TriggerTime,'MM'),\n        '/',\n        formatDateTime(pipeline().TriggerTime,'dd'),\n        '/',\n        formatDateTime(pipeline().TriggerTime,'HH_mm_ss'),\n        '/',    \n        replace(item().Prop_0, '.csv', ''),\n        '.parquet'\n    )\n}",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"annotations": []
+	}
+}
