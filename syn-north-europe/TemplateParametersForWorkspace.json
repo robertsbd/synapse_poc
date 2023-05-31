@@ -11,14 +11,14 @@
 		"syn-north-europe-WorkspaceDefaultSqlServer_connectionString": {
 			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:syn-north-europe.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
 		},
+		"Adventureworks_git_properties_typeProperties_url": {
+			"value": "https://raw.githubusercontent.com/sfrechette/adventureworks-neo4j/master/data/"
+		},
 		"AzureDataLakeStorage1_properties_typeProperties_url": {
 			"value": "https://synapseteststoragebr.dfs.core.windows.net/"
 		},
 		"syn-north-europe-WorkspaceDefaultStorage_properties_typeProperties_url": {
 			"value": "https://synapseteststoragebr.dfs.core.windows.net"
-		},
-		"Adventureworks_git_properties_typeProperties_url": {
-			"value": "https://raw.githubusercontent.com/sfrechette/adventureworks-neo4j/master/data/"
 		}
 	}
 }
