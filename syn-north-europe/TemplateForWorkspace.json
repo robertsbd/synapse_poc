@@ -34,6 +34,15 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('workspaceName'), '/test')]",
+			"type": "Microsoft.Synapse/workspaces/sqlPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/Ingest_adventure_works')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -676,7 +685,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "251a658a-9d83-4bcf-aeb4-fe57ffc0cc3a"
+						"spark.autotune.trackingId": "bc5d0127-f25c-42e3-912b-ba05c663fcce"
 					}
 				},
 				"metadata": {
@@ -701,7 +710,8 @@
 						"sparkVersion": "3.3",
 						"nodeCount": 10,
 						"cores": 4,
-						"memory": 28
+						"memory": 28,
+						"automaticScaleJobs": false
 					},
 					"sessionKeepAliveTimeout": 30
 				},
@@ -1738,6 +1748,268 @@
 			},
 			"dependsOn": [],
 			"location": "northeurope"
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/test')]",
+			"type": "Microsoft.Synapse/workspaces/sqlPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"collation": "SQL_Latin1_General_CP1_CI_AS",
+				"maxSizeBytes": 263882790666240,
+				"annotations": []
+			},
+			"dependsOn": [],
+			"location": "northeurope"
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Create Date Table')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "smallpool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "9d4c61f7-52c9-464b-ac4c-6dadbf0a8dd2"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/2c01d69b-5ddb-449b-8aab-e0a472eeae7f/resourceGroups/synapse-test/providers/Microsoft.Synapse/workspaces/syn-north-europe/bigDataPools/smallpool",
+						"name": "smallpool",
+						"type": "Spark",
+						"endpoint": "https://syn-north-europe.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/smallpool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 10,
+						"cores": 4,
+						"memory": 28,
+						"automaticScaleJobs": false
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# Create Date Table\r\n",
+							"This notebook will create a date dimension table given a start date and an end date"
+						]
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"## Create a list of dates"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {},
+						"source": [
+							"from pyspark.sql.functions import explode, sequence, to_date\r\n",
+							"\r\n",
+							"# define the start and end dates\r\n",
+							"beginDate = '2000-01-01'\r\n",
+							"endDate = '2050-12-31'\r\n",
+							"\r\n",
+							"# create a list of these dates and put them into a temporary view\r\n",
+							"(\r\n",
+							"  spark.sql(f\"SELECT EXPLODE(SEQUENCE(TO_DATE('{beginDate}'), TO_DATE('{endDate}'), INTERVAL 1 DAY)) AS CALENDAR_DATE\")\r\n",
+							"    .createOrReplaceTempView('TEMP_TABLE_DATES')\r\n",
+							")"
+						],
+						"outputs": [],
+						"execution_count": 4
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							""
+						],
+						"outputs": [],
+						"execution_count": null
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"## Get columns for the data dimension table, save to delta file and database"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql \r\n",
+							"\r\n",
+							"-- Will create all the fields required in the calendar dimension table\r\n",
+							"\r\n",
+							"-- Put this into the correct Database\r\n",
+							"--CREATE OR REPLACE TABLE DIM_CALENDAR\r\n",
+							"--USING DELTA\r\n",
+							"--LOCATION '/mnt/datalake/dim_calendar'\r\n",
+							"--AS \r\n",
+							"SELECT\r\n",
+							"    year(CALENDAR_DATE) * 10000 + month(CALENDAR_DATE) * 100 + day(CALENDAR_DATE) AS DATE_INT,\r\n",
+							"    CALENDAR_DATE,\r\n",
+							"    year(CALENDAR_DATE) AS CALENDAR_YEAR,\r\n",
+							"    year(CALENDAR_DATE) - 1 AS PREVIOUS_CALENDAR_YEAR,\r\n",
+							"    date_format(CALENDAR_DATE, 'MMMM') AS CALENDAR_MONTH,\r\n",
+							"    month(CALENDAR_DATE) AS MONTH_OF_YEAR,\r\n",
+							"    date_format(CALENDAR_DATE, 'EEEE') AS CALENDAR_DAY,\r\n",
+							"    dayofweek(CALENDAR_DATE) AS DAY_OF_WEEK,\r\n",
+							"    weekday(CALENDAR_DATE) + 1 AS DAY_OF_WEEK_MONDAY_START,\r\n",
+							"    CASE\r\n",
+							"        WHEN weekday(CALENDAR_DATE) < 5 THEN 'Y'\r\n",
+							"        ELSE 'N'\r\n",
+							"    END AS WEEK_DAY,\r\n",
+							"    dayofmonth(CALENDAR_DATE) AS DAY_OF_MONTH,\r\n",
+							"    CASE\r\n",
+							"        WHEN CALENDAR_DATE = last_day(CALENDAR_DATE) THEN 'Y'\r\n",
+							"        ELSE 'N'\r\n",
+							"    END AS IS_LAST_DAY_OF_MONTH,\r\n",
+							"    dayofyear(CALENDAR_DATE) AS DAY_OF_YEAR,\r\n",
+							"    weekofyear(CALENDAR_DATE) AS WEEK_OF_YEAR_ISO,\r\n",
+							"    quarter(CALENDAR_DATE) AS CALENDAR_QUARTER,\r\n",
+							"    /* Fiscal calendar */\r\n",
+							"    CASE\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 4 THEN year(CALENDAR_DATE) + 1\r\n",
+							"        ELSE year(CALENDAR_DATE)\r\n",
+							"    END AS FISCAL_YEAR,\r\n",
+							"    CASE\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 4 THEN year(CALENDAR_DATE)\r\n",
+							"        ELSE year(CALENDAR_DATE) - 1\r\n",
+							"    END AS PREVIOUS_FISCAL_YEAR,\r\n",
+							"    CASE\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 4 AND month(CALENDAR_DATE) <= 6 THEN 1\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 7 AND month(CALENDAR_DATE) <= 9 THEN 2\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 10 AND month(CALENDAR_DATE) <= 12 THEN 3\r\n",
+							"        ELSE 4\r\n",
+							"    END AS FISCAL_QUARTER,    \r\n",
+							"    CASE    -- Fiscal month \r\n",
+							"        WHEN month(CALENDAR_DATE) >= 4 THEN month(CALENDAR_DATE) - 3\r\n",
+							"        ELSE month(CALENDAR_DATE) + 9\r\n",
+							"    END AS FISCAL_PERIOD\r\n",
+							"FROM\r\n",
+							"    TEMP_TABLE_DATES\r\n",
+							"ORDER BY\r\n",
+							"    CALENDAR_DATE\r\n",
+							""
+						],
+						"outputs": [],
+						"execution_count": 8
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							""
+						],
+						"outputs": [],
+						"execution_count": null
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 2')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "SELECT * FROM dates",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "master",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
 		}
 	]
 }
