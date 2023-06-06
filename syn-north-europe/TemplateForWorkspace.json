@@ -716,7 +716,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "39113375-0aa4-4cec-807a-b5ced520bed9"
+						"spark.autotune.trackingId": "4e0e4ad3-4b9f-404e-afe1-b5a295de9319"
 					}
 				},
 				"metadata": {
@@ -985,7 +985,7 @@
 							"SELECT * FROM clean.vendors"
 						],
 						"outputs": [],
-						"execution_count": 27
+						"execution_count": 31
 					},
 					{
 						"cell_type": "markdown",
