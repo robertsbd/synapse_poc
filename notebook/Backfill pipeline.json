@@ -18,7 +18,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "14c5a5d1-2a0a-4ea8-80f9-8d741766a00f"
+				"spark.autotune.trackingId": "038d4f45-59fc-4d42-a65f-c89198867603"
 			}
 		},
 		"metadata": {
@@ -144,7 +144,7 @@
 					"        format('delta').mode('overwrite').saveAsTable(lakeDatabase + '.' + tableName)\r\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -215,7 +215,7 @@
 					"  format('delta').mode('overwrite').saveAsTable('clean' + '.' + 'orders')\r\n",
 					""
 				],
-				"execution_count": 26
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
