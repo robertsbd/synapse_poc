@@ -34,15 +34,6 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('workspaceName'), '/test')]",
-			"type": "Microsoft.Synapse/workspaces/sqlPools",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
 			"name": "[concat(parameters('workspaceName'), '/Ingest_adventure_works')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -475,6 +466,26 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 2')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "SELECT * FROM dates",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "master",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/Analyst notebook')]",
 			"type": "Microsoft.Synapse/workspaces/notebooks",
 			"apiVersion": "2019-06-01-preview",
@@ -685,7 +696,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "bc5d0127-f25c-42e3-912b-ba05c663fcce"
+						"spark.autotune.trackingId": "67df3f5b-9730-4e3e-a624-7f68f1522980"
 					}
 				},
 				"metadata": {
@@ -782,36 +793,37 @@
 							"collapsed": false
 						},
 						"source": [
-							"# This notebook contains setups and functions\r\n",
-							"\r\n",
-							"# Imports\r\n",
-							"from pyspark.sql.functions import *\r\n",
+							"# This notebook contains setup\r\n",
 							"\r\n",
 							"# constants\r\n",
-							"\r\n",
-							"# File paths\r\n",
 							"RAW_DL = 'abfss://rawzone@synapseteststoragebr.dfs.core.windows.net/files/'\r\n",
 							"CLEAN_DL = 'abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
 							"MODELLED_DL = 'abfss://modelzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
 							"\r\n",
-							"SOURCE_SYSTEM = \"adventure_works\" # source system of the data being ingested <- this should become a parameter as we generalise this\r\n",
+							"SOURCE_SYSTEM = \"adventure_works\" # source system of the data being ingested, \r\n",
+							"                                  # should become a parameter\r\n",
 							"\r\n",
 							"# Example of function we would put in place for cleaning data, this could be made more complete\r\n",
+							"\r\n",
 							"def clean_dataframe(df_dirty):\r\n",
-							"    col_names = df_dirty.drop('source', 'pipelineName', 'pipelineTriggerTime').columns # names of coumns that we will use to determine unique rows\r\n",
+							"    # names of coumns that we will use to determine unique rows\r\n",
+							"    col_names = df_dirty.drop('source', 'pipelineName', 'pipelineTriggerTime').columns\r\n",
 							"    return df_dirty.dropDuplicates(col_names) # get rid of any duplicates\r\n",
 							"\r\n",
-							"# raw_to_clean() will read a delta file from raw and write to a delta file \r\n",
+							"# raw_to_clean() will read a delta file from raw and write to a delta file\r\n",
 							"# in overwrite mode to cleaned, applying cleaning function\r\n",
-							"# here we should verify the schema and also DQ our data, quaranteening any rows that fail, although it is \r\n",
+							"# here we should verify the schema and also DQ our data, quaranteening any rows that fail\r\n",
+							"# note the mode overwrite, note that we are saving as a table to add it to the lake database\r\n",
 							"\r\n",
 							"def raw_to_clean(rawRelativePath, tableName, lakeDatabase):\r\n",
 							"    df_raw = spark.read.load(RAW_DL + rawRelativePath + '/*/*/*/*', format='parquet', header=True)\r\n",
 							"    df_cleaned = clean_dataframe(df_raw)\r\n",
-							"    df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + tableName).format('delta').mode('overwrite').saveAsTable(lakeDatabase + '.' + tableName) # note the mode overwrite, note that we are saving as a table to add it to the lake database"
+							"    df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + tableName). \\\r\n",
+							"        format('delta').mode('overwrite').saveAsTable(lakeDatabase + '.' + tableName)\r\n",
+							""
 						],
 						"outputs": [],
-						"execution_count": 23
+						"execution_count": 11
 					},
 					{
 						"cell_type": "markdown",
@@ -854,7 +866,8 @@
 							"raw_to_clean('vendorproduct', 'vendorproduct', 'clean')\r\n",
 							"raw_to_clean('vendors', 'vendors', 'clean')\r\n",
 							"\r\n",
-							"# For the table orders we need to change text strings to dates to get rid of US formatting. This is schema enforcement and this is where we would want to start specifying this as metadata\r\n",
+							"# For the table orders we need to change text strings to dates to get rid of US formatting. \r\n",
+							"# This is schema enforcement and this is where we would want to start specifying this as metadata\r\n",
 							"df_orders = spark.read.load(RAW_DL + 'orders' + '/*/*/*/*', format='parquet', header=True)\r\n",
 							"df_orders_out = df_orders.select(\r\n",
 							"    df_orders.SalesOrderID,\r\n",
@@ -875,10 +888,12 @@
 							"    df_orders.LineTotal)\r\n",
 							"\r\n",
 							"df_cleaned = clean_dataframe(df_orders_out)\r\n",
-							"df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + 'orders').format('delta').mode('overwrite').saveAsTable('clean' + '.' + 'orders')"
+							"df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + 'orders'). \\\r\n",
+							"  format('delta').mode('overwrite').saveAsTable('clean' + '.' + 'orders')\r\n",
+							""
 						],
 						"outputs": [],
-						"execution_count": 36
+						"execution_count": 14
 					},
 					{
 						"cell_type": "markdown",
@@ -926,6 +941,31 @@
 						]
 					},
 					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\r\n",
+							"\r\n",
+							"SELECT * FROM clean.vendors"
+						],
+						"outputs": [],
+						"execution_count": 23
+					},
+					{
 						"cell_type": "markdown",
 						"metadata": {
 							"nteract": {
@@ -937,6 +977,213 @@
 						"source": [
 							""
 						]
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Create Date Table')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "smallpool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "976487ef-7996-4cfb-9e33-da00150052ce"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/2c01d69b-5ddb-449b-8aab-e0a472eeae7f/resourceGroups/synapse-test/providers/Microsoft.Synapse/workspaces/syn-north-europe/bigDataPools/smallpool",
+						"name": "smallpool",
+						"type": "Spark",
+						"endpoint": "https://syn-north-europe.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/smallpool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 10,
+						"cores": 4,
+						"memory": 28,
+						"automaticScaleJobs": false
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# Create Date Table\r\n",
+							"This notebook will create a date dimension table given a start date and an end date"
+						]
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"## Create a list of dates"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {},
+						"source": [
+							"# define the start and end dates\r\n",
+							"BEGIN_DATE = '2000-01-01'\r\n",
+							"END_DATE = '2050-12-31'\r\n",
+							"\r\n",
+							"# create a list of these dates and put them into a temporary view\r\n",
+							"spark.sql(f\"SELECT EXPLODE(SEQUENCE(TO_DATE('{BEGIN_DATE}'), TO_DATE('{END_DATE}'), INTERVAL 1 DAY)) AS CALENDAR_DATE\").createOrReplaceTempView('TEMP_TABLE_DATES')\r\n",
+							""
+						],
+						"outputs": [],
+						"execution_count": 1
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"## Get columns for the data dimension table, save to delta file and database"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql \r\n",
+							"\r\n",
+							"-- Will create all the fields required in the calendar dimension table\r\n",
+							"\r\n",
+							"-- Put this into the correct Database\r\n",
+							"--CREATE OR REPLACE TABLE DIM_CALENDAR\r\n",
+							"--USING DELTA\r\n",
+							"--LOCATION '/mnt/datalake/dim_calendar'\r\n",
+							"--AS \r\n",
+							"SELECT\r\n",
+							"    year(CALENDAR_DATE) * 10000 + month(CALENDAR_DATE) * 100 + day(CALENDAR_DATE) AS DATE_INT,\r\n",
+							"    CALENDAR_DATE,\r\n",
+							"    year(CALENDAR_DATE) AS CALENDAR_YEAR,\r\n",
+							"    year(CALENDAR_DATE) - 1 AS PREVIOUS_CALENDAR_YEAR,\r\n",
+							"    date_format(CALENDAR_DATE, 'MMMM') AS CALENDAR_MONTH,\r\n",
+							"    month(CALENDAR_DATE) AS MONTH_OF_YEAR,\r\n",
+							"    date_format(CALENDAR_DATE, 'EEEE') AS CALENDAR_DAY,\r\n",
+							"    dayofweek(CALENDAR_DATE) AS DAY_OF_WEEK,\r\n",
+							"    weekday(CALENDAR_DATE) + 1 AS DAY_OF_WEEK_MONDAY_START,\r\n",
+							"    CASE\r\n",
+							"        WHEN weekday(CALENDAR_DATE) < 5 THEN 'Y'\r\n",
+							"        ELSE 'N'\r\n",
+							"    END AS WEEK_DAY,\r\n",
+							"    dayofmonth(CALENDAR_DATE) AS DAY_OF_MONTH,\r\n",
+							"    CASE\r\n",
+							"        WHEN CALENDAR_DATE = last_day(CALENDAR_DATE) THEN 'Y'\r\n",
+							"        ELSE 'N'\r\n",
+							"    END AS IS_LAST_DAY_OF_MONTH,\r\n",
+							"    dayofyear(CALENDAR_DATE) AS DAY_OF_YEAR,\r\n",
+							"    weekofyear(CALENDAR_DATE) AS WEEK_OF_YEAR_ISO,\r\n",
+							"    quarter(CALENDAR_DATE) AS CALENDAR_QUARTER,\r\n",
+							"    /* Fiscal calendar */\r\n",
+							"    CASE\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 4 THEN year(CALENDAR_DATE) + 1\r\n",
+							"        ELSE year(CALENDAR_DATE)\r\n",
+							"    END AS FISCAL_YEAR,\r\n",
+							"    CASE\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 4 THEN year(CALENDAR_DATE)\r\n",
+							"        ELSE year(CALENDAR_DATE) - 1\r\n",
+							"    END AS PREVIOUS_FISCAL_YEAR,\r\n",
+							"    CASE\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 4 AND month(CALENDAR_DATE) <= 6 THEN 1\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 7 AND month(CALENDAR_DATE) <= 9 THEN 2\r\n",
+							"        WHEN month(CALENDAR_DATE) >= 10 AND month(CALENDAR_DATE) <= 12 THEN 3\r\n",
+							"        ELSE 4\r\n",
+							"    END AS FISCAL_QUARTER,    \r\n",
+							"    CASE    -- Fiscal month \r\n",
+							"        WHEN month(CALENDAR_DATE) >= 4 THEN month(CALENDAR_DATE) - 3\r\n",
+							"        ELSE month(CALENDAR_DATE) + 9\r\n",
+							"    END AS FISCAL_PERIOD\r\n",
+							"FROM\r\n",
+							"    TEMP_TABLE_DATES\r\n",
+							"ORDER BY\r\n",
+							"    CALENDAR_DATE\r\n",
+							""
+						],
+						"outputs": [],
+						"execution_count": 8
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							""
+						],
+						"outputs": [],
+						"execution_count": null
 					}
 				]
 			},
@@ -1762,247 +2009,17 @@
 			"location": "northeurope"
 		},
 		{
-			"name": "[concat(parameters('workspaceName'), '/Create Date Table')]",
-			"type": "Microsoft.Synapse/workspaces/notebooks",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"nbformat": 4,
-				"nbformat_minor": 2,
-				"bigDataPool": {
-					"referenceName": "smallpool",
-					"type": "BigDataPoolReference"
-				},
-				"sessionProperties": {
-					"driverMemory": "28g",
-					"driverCores": 4,
-					"executorMemory": "28g",
-					"executorCores": 4,
-					"numExecutors": 2,
-					"conf": {
-						"spark.dynamicAllocation.enabled": "false",
-						"spark.dynamicAllocation.minExecutors": "2",
-						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "9d4c61f7-52c9-464b-ac4c-6dadbf0a8dd2"
-					}
-				},
-				"metadata": {
-					"saveOutput": true,
-					"enableDebugMode": false,
-					"kernelspec": {
-						"name": "synapse_pyspark",
-						"display_name": "Synapse PySpark"
-					},
-					"language_info": {
-						"name": "python"
-					},
-					"a365ComputeOptions": {
-						"id": "/subscriptions/2c01d69b-5ddb-449b-8aab-e0a472eeae7f/resourceGroups/synapse-test/providers/Microsoft.Synapse/workspaces/syn-north-europe/bigDataPools/smallpool",
-						"name": "smallpool",
-						"type": "Spark",
-						"endpoint": "https://syn-north-europe.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/smallpool",
-						"auth": {
-							"type": "AAD",
-							"authResource": "https://dev.azuresynapse.net"
-						},
-						"sparkVersion": "3.3",
-						"nodeCount": 10,
-						"cores": 4,
-						"memory": 28,
-						"automaticScaleJobs": false
-					},
-					"sessionKeepAliveTimeout": 30
-				},
-				"cells": [
-					{
-						"cell_type": "markdown",
-						"metadata": {
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							}
-						},
-						"source": [
-							"# Create Date Table\r\n",
-							"This notebook will create a date dimension table given a start date and an end date"
-						]
-					},
-					{
-						"cell_type": "markdown",
-						"metadata": {
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							}
-						},
-						"source": [
-							"## Create a list of dates"
-						]
-					},
-					{
-						"cell_type": "code",
-						"metadata": {},
-						"source": [
-							"from pyspark.sql.functions import explode, sequence, to_date\r\n",
-							"\r\n",
-							"# define the start and end dates\r\n",
-							"beginDate = '2000-01-01'\r\n",
-							"endDate = '2050-12-31'\r\n",
-							"\r\n",
-							"# create a list of these dates and put them into a temporary view\r\n",
-							"(\r\n",
-							"  spark.sql(f\"SELECT EXPLODE(SEQUENCE(TO_DATE('{beginDate}'), TO_DATE('{endDate}'), INTERVAL 1 DAY)) AS CALENDAR_DATE\")\r\n",
-							"    .createOrReplaceTempView('TEMP_TABLE_DATES')\r\n",
-							")"
-						],
-						"outputs": [],
-						"execution_count": 4
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							}
-						},
-						"source": [
-							""
-						],
-						"outputs": [],
-						"execution_count": null
-					},
-					{
-						"cell_type": "markdown",
-						"metadata": {
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							}
-						},
-						"source": [
-							"## Get columns for the data dimension table, save to delta file and database"
-						]
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql \r\n",
-							"\r\n",
-							"-- Will create all the fields required in the calendar dimension table\r\n",
-							"\r\n",
-							"-- Put this into the correct Database\r\n",
-							"--CREATE OR REPLACE TABLE DIM_CALENDAR\r\n",
-							"--USING DELTA\r\n",
-							"--LOCATION '/mnt/datalake/dim_calendar'\r\n",
-							"--AS \r\n",
-							"SELECT\r\n",
-							"    year(CALENDAR_DATE) * 10000 + month(CALENDAR_DATE) * 100 + day(CALENDAR_DATE) AS DATE_INT,\r\n",
-							"    CALENDAR_DATE,\r\n",
-							"    year(CALENDAR_DATE) AS CALENDAR_YEAR,\r\n",
-							"    year(CALENDAR_DATE) - 1 AS PREVIOUS_CALENDAR_YEAR,\r\n",
-							"    date_format(CALENDAR_DATE, 'MMMM') AS CALENDAR_MONTH,\r\n",
-							"    month(CALENDAR_DATE) AS MONTH_OF_YEAR,\r\n",
-							"    date_format(CALENDAR_DATE, 'EEEE') AS CALENDAR_DAY,\r\n",
-							"    dayofweek(CALENDAR_DATE) AS DAY_OF_WEEK,\r\n",
-							"    weekday(CALENDAR_DATE) + 1 AS DAY_OF_WEEK_MONDAY_START,\r\n",
-							"    CASE\r\n",
-							"        WHEN weekday(CALENDAR_DATE) < 5 THEN 'Y'\r\n",
-							"        ELSE 'N'\r\n",
-							"    END AS WEEK_DAY,\r\n",
-							"    dayofmonth(CALENDAR_DATE) AS DAY_OF_MONTH,\r\n",
-							"    CASE\r\n",
-							"        WHEN CALENDAR_DATE = last_day(CALENDAR_DATE) THEN 'Y'\r\n",
-							"        ELSE 'N'\r\n",
-							"    END AS IS_LAST_DAY_OF_MONTH,\r\n",
-							"    dayofyear(CALENDAR_DATE) AS DAY_OF_YEAR,\r\n",
-							"    weekofyear(CALENDAR_DATE) AS WEEK_OF_YEAR_ISO,\r\n",
-							"    quarter(CALENDAR_DATE) AS CALENDAR_QUARTER,\r\n",
-							"    /* Fiscal calendar */\r\n",
-							"    CASE\r\n",
-							"        WHEN month(CALENDAR_DATE) >= 4 THEN year(CALENDAR_DATE) + 1\r\n",
-							"        ELSE year(CALENDAR_DATE)\r\n",
-							"    END AS FISCAL_YEAR,\r\n",
-							"    CASE\r\n",
-							"        WHEN month(CALENDAR_DATE) >= 4 THEN year(CALENDAR_DATE)\r\n",
-							"        ELSE year(CALENDAR_DATE) - 1\r\n",
-							"    END AS PREVIOUS_FISCAL_YEAR,\r\n",
-							"    CASE\r\n",
-							"        WHEN month(CALENDAR_DATE) >= 4 AND month(CALENDAR_DATE) <= 6 THEN 1\r\n",
-							"        WHEN month(CALENDAR_DATE) >= 7 AND month(CALENDAR_DATE) <= 9 THEN 2\r\n",
-							"        WHEN month(CALENDAR_DATE) >= 10 AND month(CALENDAR_DATE) <= 12 THEN 3\r\n",
-							"        ELSE 4\r\n",
-							"    END AS FISCAL_QUARTER,    \r\n",
-							"    CASE    -- Fiscal month \r\n",
-							"        WHEN month(CALENDAR_DATE) >= 4 THEN month(CALENDAR_DATE) - 3\r\n",
-							"        ELSE month(CALENDAR_DATE) + 9\r\n",
-							"    END AS FISCAL_PERIOD\r\n",
-							"FROM\r\n",
-							"    TEMP_TABLE_DATES\r\n",
-							"ORDER BY\r\n",
-							"    CALENDAR_DATE\r\n",
-							""
-						],
-						"outputs": [],
-						"execution_count": 8
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							}
-						},
-						"source": [
-							""
-						],
-						"outputs": [],
-						"execution_count": null
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('workspaceName'), '/SQL script 2')]",
+			"name": "[concat(parameters('workspaceName'), '/SQL script 3')]",
 			"type": "Microsoft.Synapse/workspaces/sqlscripts",
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
 				"content": {
-					"query": "SELECT * FROM dates",
+					"query": "SELECT TOP (100) * FROM [clean].[dbo].[productcategories]",
 					"metadata": {
 						"language": "sql"
 					},
 					"currentConnection": {
-						"databaseName": "master",
+						"databaseName": "clean",
 						"poolName": "Built-in"
 					},
 					"resultLimit": 5000
