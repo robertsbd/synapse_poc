@@ -18,7 +18,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "251a658a-9d83-4bcf-aeb4-fe57ffc0cc3a"
+				"spark.autotune.trackingId": "e4fea040-e3cb-4c3c-824b-f54517371376"
 			}
 		},
 		"metadata": {
@@ -115,35 +115,36 @@
 					"collapsed": false
 				},
 				"source": [
-					"# This notebook contains setups and functions\r\n",
-					"\r\n",
-					"# Imports\r\n",
-					"from pyspark.sql.functions import *\r\n",
+					"# This notebook contains setup\r\n",
 					"\r\n",
 					"# constants\r\n",
-					"\r\n",
-					"# File paths\r\n",
 					"RAW_DL = 'abfss://rawzone@synapseteststoragebr.dfs.core.windows.net/files/'\r\n",
 					"CLEAN_DL = 'abfss://cleanedzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
 					"MODELLED_DL = 'abfss://modelzone@synapseteststoragebr.dfs.core.windows.net/delta/'\r\n",
 					"\r\n",
-					"SOURCE_SYSTEM = \"adventure_works\" # source system of the data being ingested <- this should become a parameter as we generalise this\r\n",
+					"SOURCE_SYSTEM = \"adventure_works\" # source system of the data being ingested, \r\n",
+					"                                  # should become a parameter\r\n",
 					"\r\n",
 					"# Example of function we would put in place for cleaning data, this could be made more complete\r\n",
+					"\r\n",
 					"def clean_dataframe(df_dirty):\r\n",
-					"    col_names = df_dirty.drop('source', 'pipelineName', 'pipelineTriggerTime').columns # names of coumns that we will use to determine unique rows\r\n",
+					"    # names of coumns that we will use to determine unique rows\r\n",
+					"    col_names = df_dirty.drop('source', 'pipelineName', 'pipelineTriggerTime').columns\r\n",
 					"    return df_dirty.dropDuplicates(col_names) # get rid of any duplicates\r\n",
 					"\r\n",
-					"# raw_to_clean() will read a delta file from raw and write to a delta file \r\n",
+					"# raw_to_clean() will read a delta file from raw and write to a delta file\r\n",
 					"# in overwrite mode to cleaned, applying cleaning function\r\n",
-					"# here we should verify the schema and also DQ our data, quaranteening any rows that fail, although it is \r\n",
+					"# here we should verify the schema and also DQ our data, quaranteening any rows that fail\r\n",
+					"# note the mode overwrite, note that we are saving as a table to add it to the lake database\r\n",
 					"\r\n",
 					"def raw_to_clean(rawRelativePath, tableName, lakeDatabase):\r\n",
 					"    df_raw = spark.read.load(RAW_DL + rawRelativePath + '/*/*/*/*', format='parquet', header=True)\r\n",
 					"    df_cleaned = clean_dataframe(df_raw)\r\n",
-					"    df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + tableName).format('delta').mode('overwrite').saveAsTable(lakeDatabase + '.' + tableName) # note the mode overwrite, note that we are saving as a table to add it to the lake database"
+					"    df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + tableName). \\\r\n",
+					"        format('delta').mode('overwrite').saveAsTable(lakeDatabase + '.' + tableName)\r\n",
+					""
 				],
-				"execution_count": 23
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -186,7 +187,8 @@
 					"raw_to_clean('vendorproduct', 'vendorproduct', 'clean')\r\n",
 					"raw_to_clean('vendors', 'vendors', 'clean')\r\n",
 					"\r\n",
-					"# For the table orders we need to change text strings to dates to get rid of US formatting. This is schema enforcement and this is where we would want to start specifying this as metadata\r\n",
+					"# For the table orders we need to change text strings to dates to get rid of US formatting. \r\n",
+					"# This is schema enforcement and this is where we would want to start specifying this as metadata\r\n",
 					"df_orders = spark.read.load(RAW_DL + 'orders' + '/*/*/*/*', format='parquet', header=True)\r\n",
 					"df_orders_out = df_orders.select(\r\n",
 					"    df_orders.SalesOrderID,\r\n",
@@ -207,9 +209,11 @@
 					"    df_orders.LineTotal)\r\n",
 					"\r\n",
 					"df_cleaned = clean_dataframe(df_orders_out)\r\n",
-					"df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + 'orders').format('delta').mode('overwrite').saveAsTable('clean' + '.' + 'orders')"
+					"df_cleaned.write.option(\"path\", CLEAN_DL + SOURCE_SYSTEM  + \"/\" + 'orders'). \\\r\n",
+					"  format('delta').mode('overwrite').saveAsTable('clean' + '.' + 'orders')\r\n",
+					""
 				],
-				"execution_count": 36
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -255,6 +259,30 @@
 					"\r\n",
 					"We shall create a simpler reporting model by creating a SQL database which can then be queried"
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"\r\n",
+					"SELECT * FROM clean.vendors"
+				],
+				"execution_count": 23
 			},
 			{
 				"cell_type": "markdown",
